@@ -1,8 +1,4 @@
 /*
-  Software serial multple serial test
-
- Receives from the hardware serial, sends to software serial.
- Receives from software serial, sends to hardware serial.
 
  The circuit:
  * RX is digital pin 10 (connect to TX of other device)
@@ -18,7 +14,9 @@
 /* Global defines*/
 //#define LOOPBACKTEST
 //#define DEBUG_PRINT
-#define MAX_USER_INPUT    20
+#define MAX_USER_INPUT    4
+#define MSGS_AMOUNT       4
+#define MAXTIMEOUT        500000
 
 /*Initialize array of structure with states and event with proper handler */
 sStateMachine asStateMachine [] = {
@@ -35,6 +33,8 @@ SoftwareSerial mySerial(10, 11); /* RX, TX */
 eSystemState eNextState;
 char tranfer_buffer[MAX_USER_INPUT] = {0};
 uint8_t buff_idx = 0;
+bool host_pc_flag = false;
+uint8_t host_pc_ch = 0;
 
 void setup(void) 
 {
@@ -46,7 +46,7 @@ void setup(void)
 }
 
 void loop(void) 
-{ 
+{
 #ifdef LOOPBACKTEST
   if (mySerial.available()) {
     Serial.write(mySerial.read());
@@ -70,6 +70,12 @@ void loop(void)
     ;
   }
 
+  if ((host_pc_ch = Serial.read()) == 'r')
+  {
+    Serial.flush();
+    Serial.write(tranfer_buffer);
+  }
+  
   return;
 }
 
@@ -111,15 +117,16 @@ eSystemState trigger_handler(void)
 eSystemState data_handler(void)
 {
   uint32_t i = 0;
+  uint32_t timeout = 0;
   
-  const String awaiting_for_data_msgs[4] = {
+  const String awaiting_for_data_msgs[MSGS_AMOUNT] = {
     "Awaiting for datA",
     "Awaiting for daTa",
     "Awaiting for dAta",
     "Awaiting for Data",
   };
 
-  const String gathering_data_msgs[4] = {
+  const String gathering_data_msgs[MSGS_AMOUNT] = {
     "Gathering datA",
     "Gathering daTa",
     "Gathering dAta",
@@ -127,32 +134,37 @@ eSystemState data_handler(void)
   };
   
   mySerial.println(__FUNCTION__);
+  mySerial.print("\033[2J");
 
   while ( buff_idx < MAX_USER_INPUT )
   {
-
-    mySerial.print("\033[2J");
-    mySerial.println(awaiting_for_data_msgs[i]);
-    i++;
-    if (i > 3)
+    timeout++;
+    if (timeout > MAXTIMEOUT) 
     {
-      i = 0;
+      mySerial.print("\033[2J");
+      mySerial.print(awaiting_for_data_msgs[i]);
+      i++;
+      if (i == MSGS_AMOUNT)
+      {
+        i = 0;
+      }
+      delay(200);
     }
-
-    delay(200);
 
     if (mySerial.available()) 
     {
       tranfer_buffer[buff_idx] = mySerial.read();
       buff_idx++;
 
-      for (i = 0 ; i < 4 ; ++i)
+      for (i = 0 ; i < MSGS_AMOUNT ; ++i)
       {
         mySerial.print("\033[2J");
         mySerial.print(gathering_data_msgs[i]);
         delay(200);
       }
       i = 0;
+      timeout = 0;
+      mySerial.print("\033[2J");
     }
   }
 
