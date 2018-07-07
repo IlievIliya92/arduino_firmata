@@ -15,6 +15,10 @@
 #include <stdlib.h>
 #include "fsm_comm.h"
 
+/* Global defines*/
+//#define LOOPBACKTEST
+#define MAX_USER_INPUT    20
+
 /*Initialize array of structure with states and event with proper handler */
 sStateMachine asStateMachine [] = {
   {Idle_State,Detect_Trigger_Event,trigger_handler},
@@ -26,12 +30,9 @@ sStateMachine asStateMachine [] = {
 };
 
 /*Global Variables */
-eSystemState eNextState;
 SoftwareSerial mySerial(10, 11); /* RX, TX */
-
-/* Global defines*/
-//#define LOOPBACKTEST
-
+eSystemState eNextState;
+uint8_t tranfer_buffer[MAX_USER_INPUT];
 
 void setup(void) 
 {
@@ -107,6 +108,15 @@ eSystemState trigger_handler(void)
 eSystemState data_handler(void)
 {
   mySerial.println(__FUNCTION__);
+  uint8_t input_buff[MAX_USER_INPUT];
+  uint8_t i = 0;
+
+  while ( (input_buff[i] = mySerial.read()) != 'q' )
+  {
+    i++;
+  }
+
+  
   return Reset_State;
 }
 
@@ -124,7 +134,7 @@ eSystemState error_handler(void)
 eSystemEvent read_event (void)
 {
   eSystemEvent event;
-  char user_in = 0;
+  uint8_t user_in = 0;
 
   if (mySerial.available()) {
     user_in = mySerial.read();
