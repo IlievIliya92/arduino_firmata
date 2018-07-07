@@ -17,28 +17,34 @@
 
 /*Initialize array of structure with states and event with proper handler */
 sStateMachine asStateMachine [] = {
-  {Idle_State,Detect_Trigger,init_handler},
+  {Idle_State,Detect_Trigger_Event,trigger_handler},
   {Data_State,Data_Event,data_handler},
   {Reset_State,Reset_Event,reset_handler},
+  {Idle_State,Error_Event,error_handler},
+  {Data_State,Error_Event,error_handler},
+  {Reset_State,Error_Event,error_handler},
 };
 
+/*Global Variables */
+eSystemState eNextState;
 SoftwareSerial mySerial(10, 11); /* RX, TX */
 
-void serial_comm_init (void);
+/* Global defines*/
+//#define LOOPBACKTEST
+
 
 void setup(void) 
 {
   serial_comm_init();
   /* Initialize the state machine */
-  eSystemState eNextState = Idle_State;
-
-  
-
+  eNextState = Idle_State;
+  usage_fsm();
   return;
 }
 
 void loop(void) 
 { 
+#ifdef LOOPBACKTEST
   if (mySerial.available()) {
     Serial.write(mySerial.read());
   }
@@ -46,9 +52,11 @@ void loop(void)
   if (Serial.available()) {
     mySerial.write(Serial.read());
   }
-
-//Api read the event
+#endif
+  
+  //Api read the event
   eSystemEvent eNewEvent = read_event();
+
   if((eNextState < last_State) && (eNewEvent < last_Event)&& (asStateMachine[eNextState].eStateMachineEvent == eNewEvent) && (asStateMachine[eNextState].pfStateMachineEvnentHandler != NULL))
   {
     // function call as per the state and event and return the next state of the finite state machine
@@ -56,7 +64,7 @@ void loop(void)
   }
   else
   {
-    usage_fsm();
+    ;
   }
 
   return;
@@ -76,54 +84,68 @@ void serial_comm_init (void)
   /* set the data rate for the SoftwareSerial port */
   mySerial.begin(115200);
   mySerial.println("Serial communication has been initialized!");
-
+  
   return;
 }
 
 void usage_fsm (void)
 {
-
-  exit(1);
+  String info_header;
+  info_header = String (__FUNCTION__);
+  info_header = "[" + info_header + "]" "\t";
+  
+  mySerial.print(info_header);
+  mySerial.println("Allowed sequence: t (trigger event) - d (data event) - r (reset event)");
 }
 
-eSystemState init_handler(void)
-{
-  Serial.println("Init Handler");
+eSystemState trigger_handler(void)
+{ 
+  mySerial.println(__FUNCTION__);
   return Data_State;
 }
 
 eSystemState data_handler(void)
 {
-  Serial.println("Data Handler");
+  mySerial.println(__FUNCTION__);
   return Reset_State;
 }
 
 eSystemState reset_handler(void)
 {
-  Serial.println("Reset Handler");
+  mySerial.println(__FUNCTION__);
+  return Idle_State;
+}
+
+eSystemState error_handler(void)
+{
   return Idle_State;
 }
 
 eSystemEvent read_event (void)
 {
   eSystemEvent event;
-  int user_in = 0;
+  char user_in = 0;
 
+  if (mySerial.available()) {
+    user_in = mySerial.read();
+    mySerial.write(user_in);
+    mySerial.println();
+  }
+  
   switch (user_in)
   {
-    case 0:
-      event = Detect_Trigger;
+    case 't':
+      event = Detect_Trigger_Event;
       break;
-    case 1:
+    case 'd':
       event = Data_Event;
       break;
-    case 2:
+    case 'r':
       event = Reset_Event;
       break;
 
     default:
       event = Error_Event;
-      usage_fsm();
       break;
   }
 
