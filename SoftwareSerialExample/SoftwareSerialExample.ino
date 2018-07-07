@@ -17,6 +17,7 @@
 
 /* Global defines*/
 //#define LOOPBACKTEST
+//#define DEBUG_PRINT
 #define MAX_USER_INPUT    20
 
 /*Initialize array of structure with states and event with proper handler */
@@ -32,7 +33,8 @@ sStateMachine asStateMachine [] = {
 /*Global Variables */
 SoftwareSerial mySerial(10, 11); /* RX, TX */
 eSystemState eNextState;
-uint8_t tranfer_buffer[MAX_USER_INPUT];
+char tranfer_buffer[MAX_USER_INPUT] = {0};
+uint8_t buff_idx = 0;
 
 void setup(void) 
 {
@@ -92,11 +94,12 @@ void serial_comm_init (void)
 void usage_fsm (void)
 {
   String info_header;
+  
   info_header = String (__FUNCTION__);
   info_header = "[" + info_header + "]" "\t";
   
   mySerial.print(info_header);
-  mySerial.println("Allowed sequence: t (trigger event) - d (data event) - r (reset event)");
+  mySerial.println("Allowed sequence: t (trigger event) - d (data event) - r (reset event) Options: h - for help");
 }
 
 eSystemState trigger_handler(void)
@@ -107,22 +110,72 @@ eSystemState trigger_handler(void)
 
 eSystemState data_handler(void)
 {
-  mySerial.println(__FUNCTION__);
-  uint8_t input_buff[MAX_USER_INPUT];
-  uint8_t i = 0;
+  uint32_t i = 0;
+  
+  const String awaiting_for_data_msgs[4] = {
+    "Awaiting for datA",
+    "Awaiting for daTa",
+    "Awaiting for dAta",
+    "Awaiting for Data",
+  };
 
-  while ( (input_buff[i] = mySerial.read()) != 'q' )
+  const String gathering_data_msgs[4] = {
+    "Gathering datA",
+    "Gathering daTa",
+    "Gathering dAta",
+    "Gathering Data",
+  };
+  
+  mySerial.println(__FUNCTION__);
+
+  while ( buff_idx < MAX_USER_INPUT )
   {
+
+    mySerial.print("\033[2J");
+    mySerial.println(awaiting_for_data_msgs[i]);
     i++;
+    if (i > 3)
+    {
+      i = 0;
+    }
+
+    delay(200);
+
+    if (mySerial.available()) 
+    {
+      tranfer_buffer[buff_idx] = mySerial.read();
+      buff_idx++;
+
+      for (i = 0 ; i < 4 ; ++i)
+      {
+        mySerial.print("\033[2J");
+        mySerial.print(gathering_data_msgs[i]);
+        delay(200);
+      }
+      i = 0;
+    }
   }
 
+  mySerial.print("\033[2J");
   
+  while (buff_idx > 0)
+  {
+    buff_idx--;
+    mySerial.write(tranfer_buffer[buff_idx]);
+  }
+  
+  mySerial.println();
+  delay(100);
+
+  buff_idx = 0;
+
   return Reset_State;
 }
 
 eSystemState reset_handler(void)
 {
   mySerial.println(__FUNCTION__);
+    
   return Idle_State;
 }
 
@@ -133,15 +186,17 @@ eSystemState error_handler(void)
 
 eSystemEvent read_event (void)
 {
-  eSystemEvent event;
   uint8_t user_in = 0;
+  eSystemEvent event;
 
   if (mySerial.available()) {
     user_in = mySerial.read();
-    mySerial.write(user_in);
-    mySerial.println();
+#ifdef DEBUG_PRINT
+    mySerial.println(user_in);
+#endif
   }
   
+ 
   switch (user_in)
   {
     case 't':
@@ -153,7 +208,9 @@ eSystemEvent read_event (void)
     case 'r':
       event = Reset_Event;
       break;
-
+    case 'h':
+      usage_fsm();
+      break;
     default:
       event = Error_Event;
       break;
