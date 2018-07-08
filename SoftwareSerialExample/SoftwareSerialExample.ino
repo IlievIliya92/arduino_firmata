@@ -10,13 +10,15 @@
 
 #include <stdlib.h>
 #include "fsm_comm.h"
+#include "sleep_mode.h"
 
 /* Global defines*/
 //#define LOOPBACKTEST
 //#define DEBUG_PRINT
 #define MAX_USER_INPUT    4
 #define MSGS_AMOUNT       4
-#define MAXTIMEOUT        500000
+#define MAXTIMEOUT        300000
+#define TIMEOUTSLEEP      1000000
 
 /*Initialize array of structure with states and event with proper handler */
 sStateMachine asStateMachine [] = {
@@ -32,9 +34,12 @@ sStateMachine asStateMachine [] = {
 SoftwareSerial mySerial(10, 11); /* RX, TX */
 eSystemState eNextState;
 char tranfer_buffer[MAX_USER_INPUT] = {0};
-uint8_t buff_idx = 0;
+
 bool host_pc_flag = false;
+uint8_t buff_idx = 0;
 uint8_t host_pc_ch = 0;
+uint32_t sleep_counter = 0;
+
 
 void setup(void) 
 {
@@ -64,16 +69,26 @@ void loop(void)
   {
     // function call as per the state and event and return the next state of the finite state machine
     eNextState = (*asStateMachine[eNextState].pfStateMachineEvnentHandler)();
+    sleep_counter = 0;
   }
   else
   {
-    ;
+    sleep_counter++;
   }
 
   if ((host_pc_ch = Serial.read()) == 'r')
   {
     Serial.flush();
     Serial.write(tranfer_buffer);
+    sleep_counter = 0;    
+  }
+
+  if (sleep_counter > TIMEOUTSLEEP)
+  {
+    mySerial.print("\033[2J");
+    mySerial.println("Entering sleep mode...");
+
+    sleepNow();
   }
   
   return;
@@ -83,7 +98,7 @@ void serial_comm_init (void)
 {
    /* Open serial communications and wait for port to open */
   /* Serial Console of the Arduino */
-  Serial.begin(57600,SERIAL_8N1);
+  Serial.begin(57600);
   while (!Serial) {
     ; /*  wait for serial port to connect. Needed for native USB port only */
   }
@@ -111,6 +126,8 @@ void usage_fsm (void)
 eSystemState trigger_handler(void)
 { 
   mySerial.println(__FUNCTION__);
+  sleepNow();
+ 
   return Data_State;
 }
 
@@ -118,7 +135,7 @@ eSystemState data_handler(void)
 {
   uint32_t i = 0;
   uint32_t timeout = 0;
-  
+
   const String awaiting_for_data_msgs[MSGS_AMOUNT] = {
     "Awaiting for datA",
     "Awaiting for daTa",
@@ -147,10 +164,12 @@ eSystemState data_handler(void)
       if (i == MSGS_AMOUNT)
       {
         i = 0;
+        
       }
+
       delay(200);
     }
-
+    
     if (mySerial.available()) 
     {
       tranfer_buffer[buff_idx] = mySerial.read();
@@ -187,7 +206,7 @@ eSystemState data_handler(void)
 eSystemState reset_handler(void)
 {
   mySerial.println(__FUNCTION__);
-    
+  sleepNow();
   return Idle_State;
 }
 
