@@ -9,14 +9,15 @@
 #include <SoftwareSerial.h>
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "fsm_comm.h"
 #include "sleep_mode.h"
+#include "global_defines.h"
+#include "host_pc_comm_parser.h"
 
 /* Global defines*/
 //#define LOOPBACKTEST
 //#define DEBUG_PRINT
-#define MAX_USER_INPUT    4
-#define MSGS_AMOUNT       4
 #define MAXTIMEOUT        300000
 #define TIMEOUTSLEEP      1000000
 
@@ -29,6 +30,9 @@ sStateMachine asStateMachine [] = {
   {Data_State, Error_Event, error_handler},
   {Reset_State, Error_Event, error_handler},
 };
+
+/* Jump table with actions */
+void (*func[])(void) = {ccw, cw};
 
 /*Global Variables */
 SoftwareSerial mySerial(10, 11); /* RX, TX */
@@ -79,6 +83,7 @@ void loop(void)
   if ((host_pc_ch = Serial.read()) == 'r')
   {
     Serial.print(tranfer_buffer);
+    comm_rcv(tranfer_buffer);
     memset (tranfer_buffer, 0x00, MAX_USER_INPUT);
     sleep_counter = 0;
   }
@@ -161,7 +166,7 @@ eSystemState data_handler(void)
       mySerial.print("\033[2J");
       mySerial.print(awaiting_for_data_msgs[i]);
       i++;
-      if (i == MSGS_AMOUNT)
+      if (i >= MSGS_AMOUNT)
       {
         i = 0;
       }
@@ -247,3 +252,33 @@ eSystemEvent read_event (void)
   return event;
 }
 
+void execute_action(int8_t comm_index)
+{
+  switch (comm_index)
+  {
+    case 1:
+      func[0];
+    break;
+
+    case 2:
+      func[1];
+    break;
+
+    default:
+    break;
+  }
+
+  return;
+}
+
+void ccw (void)
+{
+  Serial.println("CCW");
+  return;
+}
+
+void cw (void)
+{
+  Serial.println("CW");
+  return;
+}

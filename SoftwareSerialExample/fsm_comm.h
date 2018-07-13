@@ -1,5 +1,5 @@
-#ifndef   _FSMLT_H_
-#define   _FSMLT_H_
+#ifndef _FSMLT_H_
+#define _FSMLT_H_
 
 typedef enum
 {
