@@ -1,9 +1,10 @@
 import time
 import serial
+from Tkinter import *
 
 # configure the serial connections (the parameters differs on the device you are connecting to)
 ser = serial.Serial(
-	port='/dev/ttyUSB0',
+	port='/dev/ttyUSB1',
 	baudrate=115200,
 	parity=serial.PARITY_NONE,
 	stopbits=serial.STOPBITS_ONE,
@@ -14,6 +15,25 @@ ser = serial.Serial(
 ser.close()
 ser.open()
 ser.isOpen()
+
+
+#make a TkInter Window
+root = Tk()
+root.wm_title("Reading Serial")
+
+# make a scrollbar
+scrollbar = Scrollbar(root)
+scrollbar.pack(side=RIGHT, fill=Y)
+
+# make a text box to put the serial output
+log = Text ( root, width=30, height=30, takefocus=0)
+log.pack()
+
+# attach text box to scrollbar
+log.config(yscrollcommand=scrollbar.set)
+scrollbar.config(command=log.yview)
+
+
 
 input=1
 while 1 :

@@ -1,11 +1,11 @@
 /*
 
- The circuit:
- * RX is digital pin 10 (connect to TX of other device)
- * TX is digital pin 11 (connect to RX of other device)
+  The circuit:
+   RX is digital pin 10 (connect to TX of other device)
+   TX is digital pin 11 (connect to RX of other device)
 
- */
- 
+*/
+
 #include <SoftwareSerial.h>
 
 #include <stdlib.h>
@@ -22,12 +22,12 @@
 
 /*Initialize array of structure with states and event with proper handler */
 sStateMachine asStateMachine [] = {
-  {Idle_State,Detect_Trigger_Event,trigger_handler},
-  {Data_State,Data_Event,data_handler},
-  {Reset_State,Reset_Event,reset_handler},
-  {Idle_State,Error_Event,error_handler},
-  {Data_State,Error_Event,error_handler},
-  {Reset_State,Error_Event,error_handler},
+  {Idle_State, Detect_Trigger_Event, trigger_handler},
+  {Data_State, Data_Event, data_handler},
+  {Reset_State, Reset_Event, reset_handler},
+  {Idle_State, Error_Event, error_handler},
+  {Data_State, Error_Event, error_handler},
+  {Reset_State, Error_Event, error_handler},
 };
 
 /*Global Variables */
@@ -41,7 +41,7 @@ uint8_t host_pc_ch = 0;
 uint32_t sleep_counter = 0;
 
 
-void setup(void) 
+void setup(void)
 {
   serial_comm_init();
   /* Initialize the state machine */
@@ -50,7 +50,7 @@ void setup(void)
   return;
 }
 
-void loop(void) 
+void loop(void)
 {
 #ifdef LOOPBACKTEST
   if (mySerial.available()) {
@@ -60,12 +60,12 @@ void loop(void)
   if (Serial.available()) {
     mySerial.write(Serial.read());
   }
-#endif
-  
+#else
+
   //Api read the event
   eSystemEvent eNewEvent = read_event();
 
-  if((eNextState < last_State) && (eNewEvent < last_Event)&& (asStateMachine[eNextState].eStateMachineEvent == eNewEvent) && (asStateMachine[eNextState].pfStateMachineEvnentHandler != NULL))
+  if ((eNextState < last_State) && (eNewEvent < last_Event) && (asStateMachine[eNextState].eStateMachineEvent == eNewEvent) && (asStateMachine[eNextState].pfStateMachineEvnentHandler != NULL))
   {
     // function call as per the state and event and return the next state of the finite state machine
     eNextState = (*asStateMachine[eNextState].pfStateMachineEvnentHandler)();
@@ -78,9 +78,9 @@ void loop(void)
 
   if ((host_pc_ch = Serial.read()) == 'r')
   {
-    Serial.flush();
-    Serial.write(tranfer_buffer);
-    sleep_counter = 0;    
+    Serial.print(tranfer_buffer);
+    memset (tranfer_buffer, 0x00, MAX_USER_INPUT);
+    sleep_counter = 0;
   }
 
   if (sleep_counter > TIMEOUTSLEEP)
@@ -90,13 +90,13 @@ void loop(void)
 
     sleepNow();
   }
-  
+#endif
   return;
 }
 
 void serial_comm_init (void)
 {
-   /* Open serial communications and wait for port to open */
+  /* Open serial communications and wait for port to open */
   /* Serial Console of the Arduino */
   Serial.begin(57600);
   while (!Serial) {
@@ -104,30 +104,30 @@ void serial_comm_init (void)
   }
 
   Serial.println("Serial communication has been initialized!");
-  
+
   /* set the data rate for the SoftwareSerial port */
   mySerial.begin(115200);
   mySerial.println("Serial communication has been initialized!");
-  
+
   return;
 }
 
 void usage_fsm (void)
 {
   String info_header;
-  
+
   info_header = String (__FUNCTION__);
   info_header = "[" + info_header + "]" "\t";
-  
+
   mySerial.print(info_header);
   mySerial.println("Allowed sequence: t (trigger event) - d (data event) - r (reset event) Options: h - for help");
 }
 
 eSystemState trigger_handler(void)
-{ 
+{
   mySerial.println(__FUNCTION__);
   sleepNow();
- 
+
   return Data_State;
 }
 
@@ -149,14 +149,14 @@ eSystemState data_handler(void)
     "Gathering dAta",
     "Gathering Data",
   };
-  
+
   mySerial.println(__FUNCTION__);
   mySerial.print("\033[2J");
 
   while ( buff_idx < MAX_USER_INPUT )
   {
     timeout++;
-    if (timeout > MAXTIMEOUT) 
+    if (timeout > MAXTIMEOUT)
     {
       mySerial.print("\033[2J");
       mySerial.print(awaiting_for_data_msgs[i]);
@@ -164,13 +164,11 @@ eSystemState data_handler(void)
       if (i == MSGS_AMOUNT)
       {
         i = 0;
-        
       }
-
-      delay(200);
+      delay(300);
     }
-    
-    if (mySerial.available()) 
+
+    if (mySerial.available())
     {
       tranfer_buffer[buff_idx] = mySerial.read();
       buff_idx++;
@@ -188,13 +186,13 @@ eSystemState data_handler(void)
   }
 
   mySerial.print("\033[2J");
-  
+
   while (buff_idx > 0)
   {
     buff_idx--;
     mySerial.write(tranfer_buffer[buff_idx]);
   }
-  
+
   mySerial.println();
   delay(100);
 
@@ -226,8 +224,7 @@ eSystemEvent read_event (void)
     mySerial.println(user_in);
 #endif
   }
-  
- 
+
   switch (user_in)
   {
     case 't':
